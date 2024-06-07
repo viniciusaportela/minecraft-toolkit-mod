@@ -19,6 +19,7 @@ import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.food.FoodProperties;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.alchemy.Potion;
 import net.minecraft.world.level.block.Block;
@@ -194,6 +195,16 @@ public class MinecraftToolkitMod
             details.put("id", itemId.toString());
             details.put("name", I18n.get(item.getDescriptionId()));
             details.put("mod", itemId.getNamespace());
+            details.put("isBlock", item instanceof BlockItem);
+            if (item instanceof BlockItem) {
+                Block block = ((BlockItem) item).getBlock();
+                details.put("blockName", I18n.get(block.getDescriptionId()));
+
+                ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(block);
+                if (blockId != null) {
+                    details.put("blockId", blockId.toString());
+                }
+            }
             details.put("index", index);
             index++;
 
@@ -332,6 +343,9 @@ public class MinecraftToolkitMod
             attributes.add(details);
             index++;
         }
+
+        attributeData.put("attributes", attributes);
+        attributeData.put("version", 1);
 
         // Save to JSON file
         Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/attributes.json");
