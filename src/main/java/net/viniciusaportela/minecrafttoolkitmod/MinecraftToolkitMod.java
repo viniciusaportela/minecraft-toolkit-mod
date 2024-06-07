@@ -46,13 +46,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipEntry;
-import java.util.Enumeration;
 
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod(MinecraftToolkitMod.MODID)
@@ -70,6 +66,8 @@ public class MinecraftToolkitMod
         MinecraftForge.EVENT_BUS.register(this);
     }
 
+    private final List<Map<String, Object>> texturePaths = new ArrayList<>();
+
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
@@ -82,7 +80,6 @@ public class MinecraftToolkitMod
 
     public int dump(CommandContext<CommandSourceStack> context) {
         createFolderStructure();
-        saveMetadata(context);
         saveItems();
         saveBlockList();
         savePotions();
@@ -92,6 +89,7 @@ public class MinecraftToolkitMod
         saveEffects();
         extractAllTextures();
         copyConfigs(context);
+        saveMetadata(context);
 
         context.getSource().sendSuccess(() -> Component.literal("Data dumped successfully! You can now open your " +
                         "project in Minecraft Toolkit"),
@@ -103,7 +101,9 @@ public class MinecraftToolkitMod
     private void saveEffects() {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         Map<String, Object> itemData = new HashMap<>();
+        List<Map<String, Object>> effects = new ArrayList<>();
 
+        int index = 0;
         for (Map.Entry<ResourceKey<MobEffect>, MobEffect> effectEntry : ForgeRegistries.MOB_EFFECTS.getEntries()) {
             ResourceKey<MobEffect> itemKey = effectEntry.getKey();
             MobEffect effect = effectEntry.getValue();
@@ -113,8 +113,14 @@ public class MinecraftToolkitMod
             details.put("id", effectId.toString());
             details.put("name", I18n.get(effect.getDescriptionId()));
             details.put("mod", effectId.getNamespace());
-            itemData.put(effectId.toString(), details);
+            details.put("index", index);
+            index++;
+
+            effects.add(details);
         }
+
+        itemData.put("mods", effects);
+        itemData.put("version", 1);
 
         // Save to JSON file
         Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/effects.json");
@@ -176,7 +182,9 @@ public class MinecraftToolkitMod
     private void saveItems() {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         Map<String, Object> itemData = new HashMap<>();
+        List<Map<String, Object>> items = new ArrayList<>();
 
+        int index = 0;
         for (Map.Entry<ResourceKey<Item>, Item> itemEntry : ForgeRegistries.ITEMS.getEntries()) {
             ResourceKey<Item> itemKey = itemEntry.getKey();
             Item item = itemEntry.getValue();
@@ -186,8 +194,14 @@ public class MinecraftToolkitMod
             details.put("id", itemId.toString());
             details.put("name", I18n.get(item.getDescriptionId()));
             details.put("mod", itemId.getNamespace());
-            itemData.put(itemId.toString(), details);
+            details.put("index", index);
+            index++;
+
+            items.add(details);
         }
+
+        itemData.put("items", items);
+        itemData.put("version", 1);
 
         // Save to JSON file
         Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/items.json");
@@ -202,22 +216,29 @@ public class MinecraftToolkitMod
     {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         Map<String, Object> potionData = new HashMap<>();
+        List<Map<String, Object>> potions = new ArrayList<>();
 
+        int index = 0;
         for (Map.Entry<ResourceKey<Potion>, Potion> potionRegistryObject : ForgeRegistries.POTIONS.getEntries()) {
             Potion potion = potionRegistryObject.getValue();
             ResourceLocation potionId = potionRegistryObject.getKey().location();
             if (potionId != null) {
                 Map<String, Object> details = new HashMap<>();
                 details.put("id", potionId.toString());
+                details.put("index", index);
 
                 // Collect potion effects
                 for (MobEffectInstance effectInstance : potion.getEffects()) {
                     details.put("effect_" + effectInstance.getEffect().getDescriptionId(), effectInstance.getAmplifier());
                 }
 
-                potionData.put(potionId.toString(), details);
+                potions.add(details);
+                index++;
             }
         }
+
+        potionData.put("potions", potions);
+        potionData.put("version", 1);
 
         // Save to JSON file
         Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/potions.json");
@@ -231,19 +252,26 @@ public class MinecraftToolkitMod
     public void saveMods() {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         Map<String, Object> modData = new HashMap<>();
+        List<Map<String, Object>> mods = new ArrayList<>();
 
+        int index = 0;
         for (IModInfo modInfo : ModList.get().getMods()) {
             Map<String, Object> details = new HashMap<>();
             details.put("name", modInfo.getDisplayName());
             details.put("id", modInfo.getModId());
             details.put("path", modInfo.getOwningFile().getFile().getFilePath().toString());
+            details.put("index", index);
 
             // Get mod icon
             Optional<String> iconPathOptional = modInfo.getLogoFile();
             iconPathOptional.ifPresent(iconPath -> details.put("icon", iconPath));
 
-            modData.put(modInfo.getModId(), details);
+            mods.add(details);
+            index++;
         }
+
+        modData.put("mods", mods);
+        modData.put("version", 1);
 
         // Save to JSON file
         Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/mods.json");
@@ -257,7 +285,9 @@ public class MinecraftToolkitMod
     private void saveBlockList() {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         Map<String, Object> blockData = new HashMap<>();
+        List<Map<String, Object>> blocks = new ArrayList<>();
 
+        int index = 0;
         for (Map.Entry<ResourceKey<Block>, Block> blockEntry : ForgeRegistries.BLOCKS.getEntries()) {
             ResourceKey<Block> blockKey = blockEntry.getKey();
             Block block = blockEntry.getValue();
@@ -267,8 +297,13 @@ public class MinecraftToolkitMod
             details.put("name", I18n.get(block.getDescriptionId()));
             details.put("mod", blockId.getNamespace());
             details.put("id", blockId.toString());
-            blockData.put(blockId.toString(), details);
+            details.put("index", index);
+            blocks.add(details);
+            index++;
         }
+
+        blockData.put("blocks", blocks);
+        blockData.put("version", 1);
 
         // Save to JSON file
         Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/blocks.json");
@@ -282,7 +317,9 @@ public class MinecraftToolkitMod
     private void saveAttributeList() {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         Map<String, Object> attributeData = new HashMap<>();
+        List<Map<String, Object>> attributes = new ArrayList<>();
 
+        int index = 0;
         for (Map.Entry<ResourceKey<Attribute>, Attribute> attributeEntry : ForgeRegistries.ATTRIBUTES.getEntries()) {
             ResourceKey<Attribute> attributeKey = attributeEntry.getKey();
             Attribute attribute = attributeEntry.getValue();
@@ -291,7 +328,9 @@ public class MinecraftToolkitMod
             Map<String, Object> details = new HashMap<>();
             details.put("id", attributeId.toString());
             details.put("name", I18n.get(attribute.getDescriptionId()));
-            attributeData.put(attributeId.toString(), details);
+            details.put("index", index);
+            attributes.add(details);
+            index++;
         }
 
         // Save to JSON file
@@ -306,7 +345,9 @@ public class MinecraftToolkitMod
     private void saveEntityList() {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         Map<String, Object> entityData = new HashMap<>();
+        List<Map<String, Object>> entities = new ArrayList<>();
 
+        int index = 0;
         for (Map.Entry<ResourceKey<EntityType<?>>, EntityType<?>> entityEntry : ForgeRegistries.ENTITY_TYPES.getEntries()) {
             ResourceKey<EntityType<?>> entityKey = entityEntry.getKey();
             EntityType<?> entityType = entityEntry.getValue();
@@ -316,8 +357,13 @@ public class MinecraftToolkitMod
             details.put("id", entityId.toString());
             details.put("name", I18n.get(entityType.getDescriptionId()));
             details.put("mod", entityId.getNamespace());
-            entityData.put(entityId.toString(), details);
+            details.put("index", index);
+            entities.add(details);
+            index++;
         }
+
+        entityData.put("entities", entities);
+        entityData.put("version", 1);
 
         // Save to JSON file
         Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/entities.json");
@@ -329,11 +375,11 @@ public class MinecraftToolkitMod
     }
 
     public void extractAllTextures() {
-        List<Path> MinecraftJar = FMLLoader.getLaunchHandler().getMinecraftPaths().minecraftPaths();
+        texturePaths.clear();
+        List<Path> minecraftJars = FMLLoader.getLaunchHandler().getMinecraftPaths().minecraftPaths();
+        File outputDir = new File(FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/assets").toString());
 
-        File outputDir = new File(FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/textures").toString());
-
-        for (Path path : MinecraftJar) {
+        for (Path path : minecraftJars) {
             if (!outputDir.exists()) {
                 outputDir.mkdirs();
             }
@@ -353,9 +399,12 @@ public class MinecraftToolkitMod
                 throw new RuntimeException(e);
             }
         }
+
+        Path texturesJsonPath = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/textures.json");
+        saveTexturesToJson(texturesJsonPath);
     }
 
-    private static void extractAllTexturesFromJar(String jarFilePath, File outputDir) throws IOException {
+    private void extractAllTexturesFromJar(String jarFilePath, File outputDir) throws IOException {
         Path jarPath = Paths.get(jarFilePath);
         if (!Files.exists(jarPath) || !jarFilePath.endsWith(".jar")) {
             return;
@@ -365,14 +414,23 @@ public class MinecraftToolkitMod
             Enumeration<? extends ZipEntry> entries = zipFile.entries();
             while (entries.hasMoreElements()) {
                 ZipEntry entry = entries.nextElement();
-                // Check if the entry is a texture file in any namespace
                 if (entry.getName().matches("assets/[^/]+/textures/.*") && !entry.isDirectory()) {
+                    String modId = extractModId(entry.getName());
                     String outputPath = entry.getName().replaceFirst("assets/", "");
                     File outputFile = new File(outputDir, outputPath);
+
+                    Map<String, Object> details = new HashMap<>();
+                    details.put("modId", modId);
+                    details.put("internalPath", entry.getName());
+                    details.put("outPath", outputFile.getAbsolutePath());
+                    details.put("index", texturePaths.size());
+
+                    texturePaths.add(details);
 
                     if (!outputFile.getParentFile().exists()) {
                         outputFile.getParentFile().mkdirs();
                     }
+
                     try (InputStream inputStream = zipFile.getInputStream(entry);
                          FileOutputStream outputStream = new FileOutputStream(outputFile)) {
                         byte[] buffer = new byte[1024];
@@ -383,6 +441,24 @@ public class MinecraftToolkitMod
                     }
                 }
             }
+        }
+    }
+
+    private String extractModId(String assetPath) {
+        String[] parts = assetPath.split("/");
+        return (parts.length > 1) ? parts[1] : "unknown";
+    }
+
+    private void saveTexturesToJson(Path jsonPath) {
+        Map<String, Object> root = new HashMap<>();
+        root.put("textures", texturePaths);
+        root.put("version", 1);
+
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        try (FileWriter writer = new FileWriter(jsonPath.toFile())) {
+            gson.toJson(root, writer);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
