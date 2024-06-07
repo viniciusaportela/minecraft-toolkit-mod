@@ -124,7 +124,7 @@ public class MinecraftToolkitMod
         itemData.put("version", 1);
 
         // Save to JSON file
-        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/effects.json");
+        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit/effects.json");
         try (FileWriter writer = new FileWriter(path.toFile())) {
             gson.toJson(itemData, writer);
         } catch (IOException e) {
@@ -142,7 +142,7 @@ public class MinecraftToolkitMod
     }
 
     private void createFolderStructure() {
-        Path basePath = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod");
+        Path basePath = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit");
         Path configs = basePath.resolve("configs");
         Path mods = basePath.resolve("mods");
         Path textures = basePath.resolve("textures");
@@ -161,9 +161,16 @@ public class MinecraftToolkitMod
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         Map<String, Object> metadata = new HashMap<>();
 
+        String minecraftVersion = FMLLoader.versionInfo().mcVersion();
+        String forgeVersion = ModList.get().getModContainerById("forge").get().getModInfo().getVersion().toString();
+
         metadata.put("modCount", ModList.get().getMods().size());
         metadata.put("timestamp", System.currentTimeMillis() / 1000);
+        metadata.put("modLoader", "forge");
         metadata.put("version", 1);
+        metadata.put("minecraftVersion", minecraftVersion);
+        metadata.put("loaderVersion", forgeVersion);
+        metadata.put("path", FMLPaths.GAMEDIR.get().toString());
 
         MinecraftServer server = context.getSource().getServer();
         ServerLevel overworld = server.getLevel(ServerLevel.OVERWORLD);
@@ -172,7 +179,7 @@ public class MinecraftToolkitMod
             metadata.put("worldPath", worldSavePath.toAbsolutePath().toString());
         }
 
-        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/metadata.json");
+        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit/metadata.json");
         try (FileWriter writer = new FileWriter(path.toFile())) {
             gson.toJson(metadata, writer);
         } catch (IOException e) {
@@ -215,7 +222,7 @@ public class MinecraftToolkitMod
         itemData.put("version", 1);
 
         // Save to JSON file
-        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/items.json");
+        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit/items.json");
         try (FileWriter writer = new FileWriter(path.toFile())) {
             gson.toJson(itemData, writer);
         } catch (IOException e) {
@@ -252,7 +259,7 @@ public class MinecraftToolkitMod
         potionData.put("version", 1);
 
         // Save to JSON file
-        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/potions.json");
+        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit/potions.json");
         try (FileWriter writer = new FileWriter(path.toFile())) {
             gson.toJson(potionData, writer);
         } catch (IOException e) {
@@ -285,7 +292,7 @@ public class MinecraftToolkitMod
         modData.put("version", 1);
 
         // Save to JSON file
-        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/mods.json");
+        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit/mods.json");
         try (FileWriter writer = new FileWriter(path.toFile())) {
             gson.toJson(modData, writer);
         } catch (IOException e) {
@@ -317,7 +324,7 @@ public class MinecraftToolkitMod
         blockData.put("version", 1);
 
         // Save to JSON file
-        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/blocks.json");
+        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit/blocks.json");
         try (FileWriter writer = new FileWriter(path.toFile())) {
             gson.toJson(blockData, writer);
         } catch (IOException e) {
@@ -348,7 +355,7 @@ public class MinecraftToolkitMod
         attributeData.put("version", 1);
 
         // Save to JSON file
-        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/attributes.json");
+        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit/attributes.json");
         try (FileWriter writer = new FileWriter(path.toFile())) {
             gson.toJson(attributeData, writer);
         } catch (IOException e) {
@@ -380,7 +387,7 @@ public class MinecraftToolkitMod
         entityData.put("version", 1);
 
         // Save to JSON file
-        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/entities.json");
+        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit/entities.json");
         try (FileWriter writer = new FileWriter(path.toFile())) {
             gson.toJson(entityData, writer);
         } catch (IOException e) {
@@ -391,7 +398,7 @@ public class MinecraftToolkitMod
     public void extractAllTextures() {
         texturePaths.clear();
         List<Path> minecraftJars = FMLLoader.getLaunchHandler().getMinecraftPaths().minecraftPaths();
-        File outputDir = new File(FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/assets").toString());
+        File outputDir = new File(FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit/assets").toString());
 
         for (Path path : minecraftJars) {
             if (!outputDir.exists()) {
@@ -414,7 +421,7 @@ public class MinecraftToolkitMod
             }
         }
 
-        Path texturesJsonPath = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/textures.json");
+        Path texturesJsonPath = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit/textures.json");
         saveTexturesToJson(texturesJsonPath);
     }
 
@@ -477,7 +484,7 @@ public class MinecraftToolkitMod
     }
 
     private void copyConfigs(CommandContext<CommandSourceStack> context) {
-        Path outputDir = Paths.get("minecraft-toolkit-mod/configs");
+        Path outputDir = Paths.get("minecraft-toolkit/configs");
         try {
             Files.createDirectories(outputDir);
 
