@@ -282,11 +282,12 @@ public class MinecraftToolkitMod
             iconPathOptional.ifPresent(iconPath -> {
                 try {
                     String extractedIconPath = extractIcon(modInfo, iconPath);
-                    details.put("icon", extractedIconPath);
+                    if (!extractedIconPath.isEmpty()) {
+                        details.put("icon", extractedIconPath);
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                details.put("icon", iconPath);
             });
 
             mods.add(details);
@@ -308,7 +309,7 @@ public class MinecraftToolkitMod
     private String extractIcon(IModInfo modInfo, String iconPath) throws IOException {
         IModFile modFile = modInfo.getOwningFile().getFile();
         File jarFile = new File(modFile.getFilePath().toString());
-        File outputDir = new File(FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/icons").toString());
+        File outputDir = new File(FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit/icons").toString());
 
         if (!outputDir.exists()) {
             outputDir.mkdirs();
@@ -329,7 +330,8 @@ public class MinecraftToolkitMod
                 return outputFile.getAbsolutePath();
             }
         }
-        return iconPath; // Return original path if extraction fails
+
+        return '';
     }
 
     private void saveBlockList() {
