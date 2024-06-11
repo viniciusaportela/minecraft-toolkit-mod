@@ -145,7 +145,7 @@ public class MinecraftToolkitMod
         Path basePath = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit");
         Path configs = basePath.resolve("configs");
         Path mods = basePath.resolve("mods");
-        Path textures = basePath.resolve("textures");
+        Path textures = basePath.resolve("assets");
 
         try {
             Files.createDirectories(basePath);
@@ -445,6 +445,10 @@ public class MinecraftToolkitMod
                     details.put("internalPath", entry.getName());
                     details.put("outPath", outputFile.getAbsolutePath());
                     details.put("index", texturePaths.size());
+
+                    String withoutModId = entry.getName().replaceFirst("assets/[^/]+/", "");
+
+                    details.put("id", modId + ":" + withoutModId);
 
                     texturePaths.add(details);
 
