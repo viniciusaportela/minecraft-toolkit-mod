@@ -1,6 +1,5 @@
 package net.viniciusaportela.minecrafttoolkitmod;
 
-import com.electronwill.nightconfig.core.file.CommentedFileConfig;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.brigadier.CommandDispatcher;
@@ -18,7 +17,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.ai.attributes.Attribute;
-import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.alchemy.Potion;
@@ -30,11 +28,8 @@ import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.loading.FMLLoader;
 import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.fml.loading.moddiscovery.ModFile;
-import net.minecraftforge.fml.loading.moddiscovery.ModFileInfo;
 import net.minecraftforge.forgespi.language.IModFileInfo;
 import net.minecraftforge.forgespi.language.IModInfo;
 import net.minecraftforge.forgespi.locating.IModFile;
@@ -146,12 +141,14 @@ public class MinecraftToolkitMod
         Path configs = basePath.resolve("configs");
         Path mods = basePath.resolve("mods");
         Path textures = basePath.resolve("assets");
+        Path icons = basePath.resolve("icons");
 
         try {
             Files.createDirectories(basePath);
             Files.createDirectories(configs);
             Files.createDirectories(mods);
             Files.createDirectories(textures);
+            Files.createDirectories(icons);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -282,7 +279,15 @@ public class MinecraftToolkitMod
 
             // Get mod icon
             Optional<String> iconPathOptional = modInfo.getLogoFile();
-            iconPathOptional.ifPresent(iconPath -> details.put("icon", iconPath));
+            iconPathOptional.ifPresent(iconPath -> {
+                try {
+                    String extractedIconPath = extractIcon(modInfo, iconPath);
+                    details.put("icon", extractedIconPath);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                details.put("icon", iconPath);
+            });
 
             mods.add(details);
             index++;
@@ -298,6 +303,33 @@ public class MinecraftToolkitMod
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private String extractIcon(IModInfo modInfo, String iconPath) throws IOException {
+        IModFile modFile = modInfo.getOwningFile().getFile();
+        File jarFile = new File(modFile.getFilePath().toString());
+        File outputDir = new File(FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit-mod/icons").toString());
+
+        if (!outputDir.exists()) {
+            outputDir.mkdirs();
+        }
+
+        try (ZipFile zipFile = new ZipFile(jarFile)) {
+            ZipEntry entry = zipFile.getEntry(iconPath);
+            if (entry != null) {
+                File outputFile = new File(outputDir, modInfo.getModId() + "_" + new File(iconPath).getName());
+                try (InputStream inputStream = zipFile.getInputStream(entry);
+                     FileOutputStream outputStream = new FileOutputStream(outputFile)) {
+                    byte[] buffer = new byte[1024];
+                    int len;
+                    while ((len = inputStream.read(buffer)) > 0) {
+                        outputStream.write(buffer, 0, len);
+                    }
+                }
+                return outputFile.getAbsolutePath();
+            }
+        }
+        return iconPath; // Return original path if extraction fails
     }
 
     private void saveBlockList() {
