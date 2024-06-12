@@ -331,7 +331,7 @@ public class MinecraftToolkitMod
             }
         }
 
-        return '';
+        return "";
     }
 
     private void saveBlockList() {
