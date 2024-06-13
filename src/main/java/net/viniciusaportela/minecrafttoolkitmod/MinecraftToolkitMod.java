@@ -1,7 +1,6 @@
 package net.viniciusaportela.minecrafttoolkitmod;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.google.gson.*;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.logging.LogUtils;
@@ -75,6 +74,9 @@ public class MinecraftToolkitMod
     }
 
     public int dump(CommandContext<CommandSourceStack> context) {
+        context.getSource().sendSuccess(() -> Component.literal("Dumping... this can take a while"),
+                true);
+
         createFolderStructure();
         saveItems();
         saveBlockList();
@@ -83,6 +85,7 @@ public class MinecraftToolkitMod
         saveEntityList();
         saveAttributeList();
         saveEffects();
+        saveRecipes();
         extractAllTextures();
         copyConfigs(context);
         saveMetadata(context);
@@ -124,6 +127,79 @@ public class MinecraftToolkitMod
             gson.toJson(itemData, writer);
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    private List<String> getJars() {
+        List<String> jarPath = new ArrayList<>();
+
+        List<Path> minecraftJars = FMLLoader.getLaunchHandler().getMinecraftPaths().minecraftPaths();
+        for (Path path : minecraftJars) {
+            jarPath.add(path.toString());
+        }
+
+        for (IModFileInfo modFileInfo : ModList.get().getModFiles()) {
+            IModFile modFile = modFileInfo.getFile();
+            jarPath.add(modFile.getFilePath().toString());
+        }
+
+        return jarPath;
+    }
+
+    private void saveRecipes() {
+        Map<String, Object> recipeData = new HashMap<>();
+        List<JsonElement> recipes = new ArrayList<>();
+        Set<String> recipeTypes = new HashSet<>();
+
+        List<String> jarPaths = this.getJars();
+
+        for (String path : jarPaths) {
+            try {
+                extractRecipesFromJar(path, recipes, recipeTypes);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        recipeData.put("version", 1);
+        recipeData.put("recipes", recipes);
+        recipeData.put("types", new ArrayList<>(recipeTypes));
+
+        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit/recipes.json");
+        try (FileWriter writer = new FileWriter(path.toFile())) {
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            gson.toJson(recipeData, writer);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void extractRecipesFromJar(String jarFilePath, List<JsonElement> recipes, Set<String> recipeTypes) throws IOException {
+        Path jarPath = Paths.get(jarFilePath);
+        if (!Files.exists(jarPath) || !jarFilePath.endsWith(".jar")) {
+            return;
+        }
+
+        try (ZipFile zipFile = new ZipFile(jarPath.toFile())) {
+            Enumeration<? extends ZipEntry> entries = zipFile.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                if (entry.getName().matches("data/.*/recipes/.*\\.json") && !entry.isDirectory()) {
+                    try (InputStream inputStream = zipFile.getInputStream(entry)) {
+                        JsonElement recipeJson = JsonParser.parseReader(new InputStreamReader(inputStream));
+
+                        if (recipeJson.isJsonObject()) {
+                            JsonObject recipeObject = recipeJson.getAsJsonObject();
+                            recipeObject.addProperty("filePath", entry.getName());
+                            recipes.add(recipeObject);
+
+                            if (recipeObject.has("type")) {
+                                recipeTypes.add(recipeObject.get("type").getAsString());
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -232,7 +308,7 @@ public class MinecraftToolkitMod
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         Map<String, Object> potionData = new HashMap<>();
         List<Map<String, Object>> potions = new ArrayList<>();
-
+        
         int index = 0;
         for (Map.Entry<ResourceKey<Potion>, Potion> potionRegistryObject : ForgeRegistries.POTIONS.getEntries()) {
             Potion potion = potionRegistryObject.getValue();
@@ -431,25 +507,17 @@ public class MinecraftToolkitMod
 
     public void extractAllTextures() {
         texturePaths.clear();
-        List<Path> minecraftJars = FMLLoader.getLaunchHandler().getMinecraftPaths().minecraftPaths();
         File outputDir = new File(FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit/assets").toString());
 
-        for (Path path : minecraftJars) {
-            if (!outputDir.exists()) {
-                outputDir.mkdirs();
-            }
-
-            try {
-                extractAllTexturesFromJar(path.toString(), outputDir);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+        if (!outputDir.exists()) {
+            outputDir.mkdirs();
         }
 
-        for (IModFileInfo modFileInfo : ModList.get().getModFiles()) {
-            IModFile modFile = modFileInfo.getFile();
+        List<String> jarPaths = this.getJars();
+
+        for (String path : jarPaths) {
             try {
-                extractAllTexturesFromJar(modFile.getFilePath().toString(), outputDir);
+                extractAllTexturesFromJar(path, outputDir);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
