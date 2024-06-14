@@ -34,6 +34,7 @@ import net.minecraftforge.forgespi.language.IModInfo;
 import net.minecraftforge.forgespi.locating.IModFile;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraft.world.entity.EntityType;
+import com.google.gson.stream.JsonReader;
 import org.slf4j.Logger;
 
 import java.io.*;
@@ -186,7 +187,9 @@ public class MinecraftToolkitMod
                 ZipEntry entry = entries.nextElement();
                 if (entry.getName().matches("data/.*/recipes/.*\\.json") && !entry.isDirectory()) {
                     try (InputStream inputStream = zipFile.getInputStream(entry)) {
-                        JsonElement recipeJson = JsonParser.parseReader(new InputStreamReader(inputStream));
+                        JsonReader jsonReader = new JsonReader(new InputStreamReader(inputStream));
+                        jsonReader.setLenient(true);
+                        JsonElement recipeJson = JsonParser.parseReader(jsonReader);
 
                         if (recipeJson.isJsonObject()) {
                             JsonObject recipeObject = recipeJson.getAsJsonObject();
