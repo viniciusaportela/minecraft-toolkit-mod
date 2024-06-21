@@ -63,6 +63,8 @@ public class MinecraftToolkitMod
 
     private final List<Map<String, Object>> texturePaths = new ArrayList<>();
 
+    private int recipesIndex = 0;
+
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
@@ -76,6 +78,9 @@ public class MinecraftToolkitMod
     public int dump(CommandContext<CommandSourceStack> context) {
         context.getSource().sendSuccess(() -> Component.literal("Dumping... this can take a while"),
                 true);
+
+        recipesIndex = 0;
+        texturePaths.clear();
 
         createFolderStructure();
         saveItems();
@@ -191,6 +196,15 @@ public class MinecraftToolkitMod
                         if (recipeJson.isJsonObject()) {
                             JsonObject recipeObject = recipeJson.getAsJsonObject();
                             recipeObject.addProperty("filePath", entry.getName());
+                            recipeObject.addProperty("index", recipesIndex);
+
+                            String filePath = entry.getName();
+                            String modId = filePath.split("/")[1];
+                            String jsonName = filePath.substring(filePath.lastIndexOf("/") + 1, filePath.lastIndexOf("."));
+                            recipeObject.addProperty("id", modId + ":" + jsonName);
+                            recipeObject.addProperty("mod", modId);
+
+                            recipesIndex++;
                             recipes.add(recipeObject);
 
                             if (recipeObject.has("type")) {
