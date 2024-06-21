@@ -13,6 +13,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.ai.attributes.Attribute;
@@ -35,6 +36,8 @@ import net.minecraftforge.forgespi.locating.IModFile;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraft.world.entity.EntityType;
 import com.google.gson.stream.JsonReader;
+import net.minecraftforge.registries.tags.ITag;
+import net.minecraftforge.registries.tags.ITagManager;
 import org.slf4j.Logger;
 
 import java.io.*;
@@ -92,6 +95,7 @@ public class MinecraftToolkitMod
         saveAttributeList();
         saveEffects();
         saveRecipes();
+        saveTags();
         extractAllTextures();
         copyConfigs(context);
         saveMetadata(context);
@@ -101,6 +105,37 @@ public class MinecraftToolkitMod
                 true);
 
         return 1;
+    }
+
+    private void saveTags() {
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        Map<String, Object> tagData = new HashMap<>();
+        List<Map<String, Object>> tags = new ArrayList<>();
+
+        ITagManager<Item> tagManager = ForgeRegistries.ITEMS.tags();
+        List<TagKey<Item>> tagKeys = tagManager.getTagNames().toList();
+
+        for (TagKey<Item> tagKey : tagKeys) {
+            ITag<Item> tag = tagManager.getTag(tagKey);
+            Map<String, Object> tagDetails = new HashMap<>();
+            tagDetails.put("name", tagKey.location().toString());
+            List<String> items = new ArrayList<>();
+            ForgeRegistries.ITEMS.tags().getTag(tagKey).stream().toList().forEach(item ->
+                            items.add(ForgeRegistries.ITEMS.getKey(item).toString()));
+            tagDetails.put("items", items);
+            tags.add(tagDetails);
+        }
+
+        tagData.put("tags", tags);
+        tagData.put("version", 1);
+
+        // Save to JSON file
+        Path path = FMLPaths.GAMEDIR.get().resolve("minecraft-toolkit/tags.json");
+        try (FileWriter writer = new FileWriter(path.toFile())) {
+            gson.toJson(tagData, writer);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void saveEffects() {
